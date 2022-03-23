@@ -71,32 +71,36 @@ oc create secret generic ${ADDON_NAME}-deadmanssnitch -n openshift-storage --fro
 oc create secret generic ${ADDON_NAME}-smtp -n openshift-storage --from-literal host="smtp.sendgrid.net" --from-literal password="test-key" --from-literal port="587" \
 --from-literal username="apikey" --dry-run=client -oyaml | oc apply -f -
 
+echo "- Create rook config map"
 oc create configmap rook-ceph-operator-config -n openshift-storage --dry-run=client -oyaml | oc apply -f -
-for i in ocs-operator-0.1 mcg-operator-0.1; do \
-	echo -e "apiVersion: operators.coreos.com/v1alpha1" \
-      "\nkind: ClusterServiceVersion" \
-	  "\nmetadata:" \
-	  "\n  name: $$i" \
-	  "\n  namespace: openshift-storage" \
-	  "\nspec:" \
-	  "\n  displayName: ocs operator" \
-	  "\n  install:" \
-	  "\n    spec:" \
-	  "\n      deployments:" \
-	  "\n      - name: test" \
-	  "\n        spec:" \
-	  "\n          selector:" \
-	  "\n            matchLabels:" \
-	  "\n              app: test" \
-	  "\n          template:" \
-	  "\n            metadata:" \
-	  "\n              labels:" \
-	  "\n                app: test" \
-	  "\n            spec:" \
-	  "\n              containers:" \
-	  "\n              - name: test" \
-	  "\n    strategy: deployment" | oc apply -f -; \
-done
+
+echo "- Create OCS and MCG cluster service versions"
+for csv in ocs-operator-0.1 mcg-operator-0.1; do \
+  cat << EOF | oc apply -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  name: ${CSV}
+  namespace: openshift-storage
+spec:
+  displayName: ocs operator
+  install:
+    spec:
+      deployments:
+      - name: test
+        spec:
+          selector:
+            matchLabels:
+              app: test
+          template:
+            metadata:
+              labels:
+                app: test
+            spec:
+              containers:
+              - name: test
+    strategy: deployment
+EOF
 
 echo "- Creating subscription"
 cat << EOF | oc apply -f -
